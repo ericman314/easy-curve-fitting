@@ -1,2 +1,3 @@
 # easy-curve-fitting
-Easily
+
+Easily fit any model to a set of data.
