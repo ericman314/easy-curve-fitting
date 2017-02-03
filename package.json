@@ -1,0 +1,24 @@
+{
+  "name": "easy-curve-fitting",
+  "version": "0.0.1",
+  "description": "Easily fit any model to a set of data.",
+  "main": "main.js",
+  "dependencies": {
+    "mathjs": "^3.9.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "mocha test",
+    "build": "browserify ./lib/main.js -o ./dist/easy-curve-fitting.dist.js --debug"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ericman314/easy-curve-fitting.git"
+  },
+  "author": "Eric Mansfield",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ericman314/easy-curve-fitting/issues"
+  },
+  "homepage": "https://github.com/ericman314/easy-curve-fitting#readme"
+}
