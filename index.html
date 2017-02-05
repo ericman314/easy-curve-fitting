@@ -1,10 +1,191 @@
-<script src="dist/easy-curve-fitting.dist.js"></script>
+<script src="dist/easy-curve-fitting.js"></script>
+
+<script src='https://code.jquery.com/jquery-1.11.3.min.js'></script>
+<script src='plotter.js'></script>
+
 
 <script>
   
-  
-  var result = curve.doLeastSquares("a*x+b", [{x: 1, y: 2}, {x:3, y:5}]);
-  
-  console.log(result.optimized);
+  $(function() {
+
+    var plotter = new Plotter(document.getElementById('plot'));
+
+    // Load saved data
+    if(localStorage.curveFit_data) {
+      $('#data').val(localStorage.curveFit_data);
+    }
+    if(localStorage.curveFit_guess) {
+      $('#guess').val(localStorage.curveFit_guess);
+    }
+    if(localStorage.curveFit_form) {
+      $('#form').val(localStorage.curveFit_form);
+    }
+
+
+    $("#doNotButton").on("click", function() {
+      doTheThing(false);
+    });
+
+
+    $('#doButton').on("click", function() {
+      doTheThing(true);
+    });
+    
+    $('#modelSelect').on("change", function() {
+      $('#form').val($(this).val());
+    });
+    
+    $('#form').on("change, input", function() {
+      $('#modelSelect').val("");
+    });
+
+    function doTheThing(fit) {
+
+      // Save the data for later
+      localStorage.curveFit_data = $('#data').val();
+      localStorage.curveFit_guess = $('#guess').val();
+      localStorage.curveFit_form = $('#form').val();
+
+      // Read the data
+      var lines = $('#data').val().split('\n');
+      if(lines.length === 0) {
+        alert("Please enter some data.");
+        return;
+      }
+      var data = [];
+      for(var i=0; i<lines.length; i++) {
+        if(lines[i].trim().length === 0) {
+          continue;
+        }
+        var xy = lines[i].split(/[\s,]+/);
+        if(xy.length < 2) {
+          alert("Error, only one value found on line " + (i+1).toString() + ". Please enter two columns.");
+          return;
+        }
+        var xFloat = parseFloat(xy[0]);
+        var yFloat = parseFloat(xy[1]);
+        if(isNaN(xFloat) || isNaN(yFloat)) {
+          continue;
+        }
+        data.push({x: xFloat, y: yFloat});
+      }
+
+      try {
+        var result = curve.doLeastSquares($('#form').val(), data, $('#guess').val());
+      }
+      catch (ex) {
+        alert(ex.message);
+      }
+      
+      // Display the results
+      var guessStr = "";
+      for(var key in result.optimized) {
+        if(result.optimized.hasOwnProperty(key)) {
+          var val = result.optimized[key];
+          guessStr += key + " = " + val + "\n";
+        }
+      }
+      $('#guess').val(guessStr);
+
+      var dataStr = "x\ty\tpred\tsq.err\n";
+      var SSE = 0;
+      var minX = data[0].x;
+      var maxX = data[0].x;
+      for(var i=0; i<data.length; i++) {
+        var x = data[i].x;
+        var y = data[i].y;
+        if(x > maxX)
+          maxX = x;
+        if(x < minX)
+          minX = x;
+      
+        var pred = result.pred(data[i].x);
+        data[i].pred = pred;
+        var SE = (pred-y);
+        SE = SE * SE;
+        SSE += SE;
+        dataStr += x.toString() + "\t" + y.toString() + "\t" + pred.toString() + "\t" + SE.toString() + "\n";
+      }
+      dataStr = "Sum of squared errors:\t" + SSE.toString() + "\n" + dataStr;
+      $('#data').val(dataStr);
+
+      
+      var domain = maxX - minX;
+      minX = minX - domain * 0.1;
+      maxX = maxX + domain * 0.1;
+      var smooth = [];
+      for(var x = minX; x<maxX; x += domain * 0.002) {
+        var pred = result.pred(x);
+        smooth.push({x: x, y: pred});
+      }
+
+      plotter.setData(data, smooth);
+      plotter.draw();
+
+
+    }
+
+  });
+
   
 </script>
+
+<head>
+  <title>Sustainable Energy Solutions</title>
+  <!--#include virtual="/head.shtml" -->
+
+  <style>
+    textarea {
+      width: 100%;
+    }
+    
+    #container {
+      margin: 20px;
+    }
+  </style>
+</head>
+<body>
+<!--#include virtual="/header.shtml" -->
+
+<div id=container>
+  <h1>Easy Curve Fitting</h1>
+  <p>Easily fit any model to a set of x, y data. Several preset models are provided, you can start with one of these and modify it to your liking.  When you click "Optimize", your model is parsed using the powerful <a href="http://mathjs.org">math.js</a> expression parser. Then the parameters are optimized using the Nelder-Mead (simplex) method to find a local minimum of the squared error. In some cases, you may need to press "Optimize" more than once. For models with many parameters, you may need to provide some good guess values in the "Parameters" field.</p>
+  
+  
+  <label><b>1. Paste data in two columns here.</b>
+  <textarea id=data placeholder="Paste data here (two columns)"  rows=20 ></textarea>
+  </label>
+  <p>
+  <label><b>2. Select a model or enter a custom expression.</b>
+  <br>
+    <select id=modelSelect>
+      <option value="">Custom</option> 
+      <option value="a x + b">Linear</option>
+      <option value="a x^2 + b x + c">Quadratic</option>
+      <option value="a x^3 + b x^2 + c x + d">Cubic</option>
+      <option value="a + b exp(c x)">Exponential</option>
+      <option value="a + b abs(x)^c">Power</option>
+    </select>
+  </label>
+  <br>
+  <textarea id=form placeholder="Enter custom expression here" ></textarea>
+  <br>
+  <br>
+  <label><b>3. Click the button below.</b></label>
+  <br>
+  <button id=doButton>Optimize</button>
+  <br>
+  <br>
+  <label><b>The optimized parameters appear here.</b>
+  <br>
+  <span style="font-size: 80%;">(You can manually change these parameters to start the optimization at a different point.)</span>
+  <br>
+  <textarea id=guess placeholder="Enter optional guess values"  rows=10></textarea>
+  </label>
+  <br><br>
+  
+  <canvas id=plot width=600 height=400></canvas>
+
+  
+</div>
+</body>
